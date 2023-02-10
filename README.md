@@ -1,7 +1,4 @@
-# Use:
 ### Download youtube audio/video's w/ extra features (optimised for audio)
-
----
 
 **youtubedl -u "YouTube-url" [options]**
 
@@ -21,8 +18,18 @@
   <dd>(you can also use <strong>-s c</strong> to automatically slice all the silence out)]</dd>
 </dl>
 
-# youtubedl-installation (macOS)
-Download from gitpage: **git clone https://github.com/david-auk/youtubedl ~/.github; chmod 755 ~/.github/youtubedl.sh; cd ~/.github**
 
-Run the script via: **./youtubedl.sh**
+---
+### Download from gitpage: 
+```bash
+git clone https://github.com/david-auk/youtubedl ~/.github
+chmod 755 ~/.github/youtubedl.sh
+cd ~/.github
+```
+
+
+**Run** the script via:
+```bash
+./youtubedl.sh
+```
 
