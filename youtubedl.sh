@@ -1,5 +1,5 @@
 #!/bin/bash
-version='6.0.3'
+version=''6.0.3''
 commit='-U bugfixes'
 tools=(AtomicParsley curl python@3.9 ffmpeg wget libav exiftool gnu-sed eye-d3 coreutils youtube-dl sox imagemagick instalooter git faac lame xvid)
 toolsverbeterd=`echo ${tools[*]}|tr '[:upper:]' '[:lower:]'`
