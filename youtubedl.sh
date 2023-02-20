@@ -1,6 +1,6 @@
 #!/bin/bash
-version='6.0.2'
-commit='Bugfixes'
+version='6.0.3'
+commit='-U bugfixes'
 tools=(AtomicParsley curl python@3.9 ffmpeg wget libav exiftool gnu-sed eye-d3 coreutils youtube-dl sox imagemagick instalooter git faac lame xvid)
 toolsverbeterd=`echo ${tools[*]}|tr '[:upper:]' '[:lower:]'`
 tools=($toolsverbeterd)
@@ -232,7 +232,9 @@ install () {
 		echo " "
 		echo "je instaleerd yt-dlp met:"
 		echo -e 'sudo wget -qO /usr/local/bin/yt-dlp https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp;sudo chmod a+rx /usr/local/bin/yt-dlp'
+		echo -ne 'sudo wget -qO /usr/local/bin/yt-dlp https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp;sudo chmod a+rx /usr/local/bin/yt-dlp'|pbcopy
 		echo "(het commando is gekopieërd)"
+
 		exit 1
 	fi
 	ls ~/.config/youtube-dl.conf &> /dev/null || checkinstall=1
@@ -430,17 +432,19 @@ install () {
 	exit 0
 }
 update () {
+	realpath=$(realpath $0)
+	realdir=${realpath%/*}
 	locatie
 	hoeveel1=0
 	hoeveel2=0
 	echo "checken voor update van script."
-	versievoorupdate=`head -2 ~/.github/youtubedl.sh|grep version|sed -e "s/version=//"|sed -e "s/'//g"`
-	cd ~/.github
+	versievoorupdate=`head -2 $realpath|grep version|sed -e "s/version=//"|sed -e "s/'//g"`
+	cd "$realdir"
 	git stash &> /dev/null
 	git stash drop &> /dev/null
 	git pull
-	chmod 755 `realpath $0`
-	versienaupdate=`head -2 ~/.github/youtubedl.sh|grep version|sed -e "s/version=//"|sed -e "s/'//g"`
+	chmod 755 "$realpath"
+	versienaupdate=`head -2 $realpath|grep version|sed -e "s/version=//"|sed -e "s/'//g"`
 	if [[ $versievoorupdate != $versienaupdate ]]; then
 		echo -e "\nGeupdate naar versie: $versienaupdate\nMet Patch Bericht: `head -3 ~/.github/youtubedl.sh|tail -1|sed -e "s/commit='//"|sed -e "s/'//g"`\n"
 	fi
@@ -470,7 +474,7 @@ update () {
 					space="      "
 				fi
 				brew upgrade $f &> /dev/null & while `ps -ef | grep br[e]w > /dev/null`;do for s in / / - - \\ \\ \|; do echo -ne "\r$s	$hoeveel2/$hoeveel1 $f      "; sleep .05;done;done
-				echo -ne "\r√	$hoeveel2/$hoeveel1 (%$huidigpercentage)$space$t\n"
+				echo -ne "\r${BGreen}√${NC}	${BWhite}$hoeveel2/$hoeveel1${NC} (%$huidigpercentage)$space${BWhite}$t${NC}\n"
 				if [[ $updatelijst == "" ]]; then
 					updatelijst=$t
 				else
@@ -1183,7 +1187,7 @@ if [[ $anderefile == "" ]]; then
 			specialetoegang=1
 		fi
 	else
-		alleytinfo=`$brewbin/youtube-dl $yourl --get-title --get-filename --output "~/Documents/youtube-dl/%(uploader)s$random2%(title)s.%(ext)s$random2%(upload_date)s" 2>/dev/null|awk 1 ORS="$random"`
+		alleytinfo=`yt-dlp $yourl --get-title --get-filename --output "~/Documents/youtube-dl/%(uploader)s$random2%(title)s.%(ext)s$random2%(upload_date)s" 2>/dev/null|awk 1 ORS="$random"`
 		titel=`echo $alleytinfo|awk 'BEGIN {FS="'$random'"}{print $1}'`
 		filenaamvooracc=`echo $alleytinfo|awk 'BEGIN {FS="'$random'"}{print $2}'`
 		descpull $yourl&
@@ -1216,8 +1220,7 @@ if [[ $anderefile == "" ]]; then
 			toegang="1"
 			typ=".mp4"
 		fi
-		if [[ "$toegang" == "0" ]]; #als er iets mis ging met een filenaam geven dan komt dit
-		then
+		if [[ "$toegang" == "0" ]]; then #als er iets mis ging met een filenaam geven dan komt dit
 			echo -e "\nERROR: Geen geldig YouTube URL gevonden\nVoor meer hulp, [ youtubedl -h ]\n"
 			exit 1
 		fi
@@ -1986,7 +1989,8 @@ if [[ "$toegang" == "1" ]]; then #hier controleer je of hij uberhoubt goed een f
 			if [[ $prodintitel == "1" ]]; then
 				engeneer=`echo $engeneer|sed -e "s/^@//"`
 				engeneer=`echo "$engeneer"|sed -e "s/, / x /g"`
-				avconv -i ~/Documents/youtube-dl/.tijdelijk.mp3 -metadata album="$account" -metadata TDRC="$uploaddate" -metadata description="$desc" -metadata genre="$genre" -metadata URL="$yourl" -metadata title="$liedtitelzonderprod" -metadata artist="$verbeterdartiest" -metadata composer="$engeneer" -c copy "$filenaamverbeterd" &>/dev/null
+				/usr/local/bin/avconv -i ~/Documents/youtube-dl/.tijdelijk.mp3 -metadata album="$account" -metadata TDRC="$uploaddate" -metadata description="$desc" -metadata genre="$genre" -metadata URL="$yourl" -metadata title="$liedtitelzonderprod" -metadata artist="$verbeterdartiest" -metadata composer="$engeneer" -c copy "$filenaamverbeterd"
+				exit
 				rm ~/Documents/youtube-dl/.tijdelijk.mp3 ~/Documents/youtube-dl/file.jpg &> /dev/null		
 			else
 				/usr/local/bin/avconv -i ~/Documents/youtube-dl/.tijdelijk.mp3 -metadata album="$account" -metadata TDRC="$uploaddate" -metadata genre="$genre" -metadata URL="$yourl" -metadata title="$liedtitelzonderprod" -metadata artist="$verbeterdartiest" -metadata composer="-Onbekend-" -c copy "$filenaamverbeterd" &>/dev/null
