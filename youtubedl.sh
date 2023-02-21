@@ -1,15 +1,22 @@
 #!/bin/bash
-version='6.0.3'
-commit='-U bugfixes'
-tools=(AtomicParsley curl python@3.9 ffmpeg wget libav exiftool gnu-sed eye-d3 coreutils youtube-dl sox imagemagick instalooter git faac lame xvid)
+version='6.0.4'
+commit='Migrated fully to ffmpeg'
+tools=(AtomicParsley curl python@3.9 ffmpeg wget exiftool gnu-sed eye-d3 coreutils sox imagemagick instalooter git faac lame xvid)
 toolsverbeterd=`echo ${tools[*]}|tr '[:upper:]' '[:lower:]'`
 tools=($toolsverbeterd)
 random=`echo "$RANDOM$RANDOM$RANDOM$RANDOM$RANDOM"`
 brewbin=$(echo `which brew|sed -e "s|/brew||"`)
+HOMEBREW_NO_AUTO_UPDATE=1 
 #
 # DEBUG:
 # 
 # avconv gezeik (na update): brew uninstall --ignore-dependencies lame;brew install lame;brew unlink lame && brew link lame
+#
+# avconv gezeik (nogsteeds): brew edit libav
+# deze line commenten:
+# disable! date: "2022-07-31", because: :unmaintained
+#
+# sudo /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/uninstall.sh)";/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 #
 BGreen='\033[1;32m'       # Green
 BRed='\033[1;31m'         # Red
@@ -125,7 +132,7 @@ descpull () {
 	fi
 	if $getdesc; then
 		echo er ging iets misss
-		desc=$(youtube-dl --get-description "$1"|awk 1 ORS="|")
+		desc=$(yt-dlp --get-description "$1"|awk 1 ORS="|")
 	fi
 	echo "$desc" > ~/.outputdesc.txt
 }
@@ -1149,7 +1156,7 @@ if [[ $yourltweedelinkcheck != "" ]]; then
 fi
 if [[ $yourl == *"youtube.com/playlist"* ]]; then
 	if [[ $vofa == a ]]; then
-		yourl=`$brewbin/youtube-dl "$yourl" --playlist-reverse --flat-playlist -i --get-filename -o "https://www.youtube.com/watch?v=%(id)s"|awk 1 ORS="\\\\\\ "`
+		yourl=`yt-dlp "$yourl" --playlist-reverse --flat-playlist -i --get-filename -o "https://www.youtube.com/watch?v=%(id)s"|awk 1 ORS="\\\\\\ "`
 		yourl="`echo $yourl|rev|sed -e "s/\\\\\\//"|rev`"
 		echo "`which youtubedl` -au $yourl" > ~/Documents/youtube-dl/.$random-script.sh
 		chmod 755 ~/Documents/youtube-dl/.$random-script.sh
@@ -1157,17 +1164,17 @@ if [[ $yourl == *"youtube.com/playlist"* ]]; then
 		bash ~/Documents/youtube-dl/.$random-script.sh
 		exit
 	else
-		command="youtubedl -u `youtube-dl "$yourl" --flat-playlist -i --get-filename -o "https://www.youtube.com/watch?v=%(id)s"|awk 1 ORS="\\\\\\ "`"
+		command="youtubedl -u `yt-dlp "$yourl" --flat-playlist -i --get-filename -o "https://www.youtube.com/watch?v=%(id)s"|awk 1 ORS="\\\\\\ "`"
 		command=`echo $command|rev|sed -e "s/\\\\\\//"|rev`
 	fi
 	command="$command ; exit"
 fi
 if [[ $image == 1 ]]; then
 	if [[ $instaurl == "" ]]; then
-		filenaam=`youtube-dl $yourl -x --get-filename 2> /dev/null |sed -e "s/ /$random/g"`
+		filenaam=`yt-dlp $yourl -x --get-filename 2> /dev/null |sed -e "s/ /$random/g"`
 		filenaamZonderExtentie=/Users/$USER/Downloads/`basename $filenaam|rev| cut -d'.' -f 2-|rev`.jpg
 		troll=`echo $filenaamZonderExtentie|sed -e "s/$random/ /g"`
-		wget -O "$troll" `$brewbin/youtube-dl $yourl --get-thumbnail --no-check-certificate 2> /dev/null` &> /dev/null
+		wget -O "$troll" `yt-dlp $yourl --get-thumbnail --no-check-certificate 2> /dev/null` &> /dev/null
 		exit
 	else
 		vofa=a
@@ -1264,9 +1271,9 @@ if [[ "$toegang" == "1" ]]; then #hier controleer je of hij uberhoubt goed een f
 					trap
 					#--embed-thumbnail
 					if [[ $wgetgingfout == 1 ]]; then
-						yt-dlp $yourl -x --audio-format mp3 --embed-thumbnail --audio-quality 0 --output "$filenaam" -f bestaudio&&goedgegaan=1
+						yt-dlp $yourl -x --force-overwrites --audio-format mp3 --embed-thumbnail --audio-quality 0 --output "${filenaam%.*}" -f bestaudio&&goedgegaan=1
 					else
-						yt-dlp $yourl -x --audio-format mp3 --audio-quality 0 --output "$filenaam" -f bestaudio&&goedgegaan=1
+						yt-dlp $yourl -x --force-overwrites --audio-format mp3 --audio-quality 0 --output "${filenaam%.*}" -f bestaudio&&goedgegaan=1
 						if [[ $goedgegaan == 1 ]]; then
 							eyeD3 --add-image "/Users/$USER/Documents/youtube-dl/.outfile.jpg:FRONT_COVER" "$filenaamverbeterd" &>/dev/null
 							rm ~/Documents/youtube-dl/.outfile.jpg
@@ -1989,8 +1996,7 @@ if [[ "$toegang" == "1" ]]; then #hier controleer je of hij uberhoubt goed een f
 			if [[ $prodintitel == "1" ]]; then
 				engeneer=`echo $engeneer|sed -e "s/^@//"`
 				engeneer=`echo "$engeneer"|sed -e "s/, / x /g"`
-				/usr/local/bin/avconv -i ~/Documents/youtube-dl/.tijdelijk.mp3 -metadata album="$account" -metadata TDRC="$uploaddate" -metadata description="$desc" -metadata genre="$genre" -metadata URL="$yourl" -metadata title="$liedtitelzonderprod" -metadata artist="$verbeterdartiest" -metadata composer="$engeneer" -c copy "$filenaamverbeterd"
-				exit
+				ffmpeg -i ~/Documents/youtube-dl/.tijdelijk.mp3 -metadata album="$account" -metadata TDRC="$uploaddate" -metadata description="$desc" -metadata genre="$genre" -metadata URL="$yourl" -metadata title="$liedtitelzonderprod" -metadata artist="$verbeterdartiest" -metadata composer="$engeneer" -c copy "$filenaamverbeterd" &>/dev/null
 				rm ~/Documents/youtube-dl/.tijdelijk.mp3 ~/Documents/youtube-dl/file.jpg &> /dev/null		
 			else
 				/usr/local/bin/avconv -i ~/Documents/youtube-dl/.tijdelijk.mp3 -metadata album="$account" -metadata TDRC="$uploaddate" -metadata genre="$genre" -metadata URL="$yourl" -metadata title="$liedtitelzonderprod" -metadata artist="$verbeterdartiest" -metadata composer="-Onbekend-" -c copy "$filenaamverbeterd" &>/dev/null
@@ -2009,11 +2015,11 @@ if [[ "$toegang" == "1" ]]; then #hier controleer je of hij uberhoubt goed een f
 			fi
 			if [[ $image == 0 ]]; then	
 				if [[ $instaurl == "vid" ]]; then
-					wget -O ~/Documents/youtube-dl/.outfile.jpg `$brewbin/youtube-dl --get-thumbnail $yourl` &> /dev/null
+					wget -O ~/Documents/youtube-dl/.outfile.jpg `yt-dlp --get-thumbnail $yourl` &> /dev/null
 				else
 					typeurl=`echo $instaurl|sed -e "s|https://||"`
 					if [[ $typeurl == "youtu.be"* ]]||[[ $typeurl == "www.youtube.com"* ]]; then
-						wget -O ~/Documents/youtube-dl/.outfile.jpg `$brewbin/youtube-dl --get-thumbnail $instaurl` &> /dev/null
+						wget -O ~/Documents/youtube-dl/.outfile.jpg `yt-dlp --get-thumbnail $instaurl` &> /dev/null
 					else
 						if [[ $typeurl == "www.instagram.com"* ]]; then
 							instalooter -T outfile post $instaurl ~/Documents/youtube-dl&>/dev/null
@@ -2029,7 +2035,7 @@ if [[ "$toegang" == "1" ]]; then #hier controleer je of hij uberhoubt goed een f
 								else
 									if [[ $yourl != "" ]]; then
 										echo "File type niet ondersteund, eigen video wordt gebruikt"
-										wget -O ~/Documents/youtube-dl/.outfile.jpg `$brewbin/youtube-dl --get-thumbnail $yourl` &> /dev/null
+										wget -O ~/Documents/youtube-dl/.outfile.jpg `yt-dlp --get-thumbnail $yourl` &> /dev/null
 									else
 										exit 1
 									fi
@@ -2051,7 +2057,7 @@ if [[ "$toegang" == "1" ]]; then #hier controleer je of hij uberhoubt goed een f
 								if [[ $fotokeuze == 2 ]]; then
 									if [[ $yourl != "" ]]; then
 										echo "er ging iets mis met het downloaden van de foto, eigen thumbnail wordt gebruikt"
-										wget -O ~/Documents/youtube-dl/.outfile.jpg `$brewbin/youtube-dl --get-thumbnail $yourl` &> /dev/null
+										wget -O ~/Documents/youtube-dl/.outfile.jpg `yt-dlp --get-thumbnail $yourl` &> /dev/null
 									fi		
 								fi
 							fi
@@ -2166,7 +2172,7 @@ if [[ "$toegang" == "1" ]]; then #hier controleer je of hij uberhoubt goed een f
 							mv /Users/$USER/Documents/youtube-dl/.outfiletotaal.jpg /Users/$USER/Documents/youtube-dl/file.jpg&&echo -ne "\r${BGreen}√${NC}\t\tClean up voltooid                  \n"
 						else
 							convert -size 3840x2160 xc:transparent -font Impact -fill $onderliggendekleur -pointsize $titelvergrotingsfactor -gravity center -draw "text 0,-140 '$liedtitelzonderprodh'" -pointsize $artiestvergrotingsfactor -gravity center -draw "text 0,185 '$verbeterdartiesth'" -blur "0x$hvlblurletter" -fill white -colorize $hoedikdeletters -pointsize $titelvergrotingsfactor -draw "text 0,-140 '$liedtitelzonderprodh'" -pointsize $artiestvergrotingsfactor -gravity center -draw "text 0,185 '$verbeterdartiesth'" /Users/$USER/Documents/youtube-dl/.outfile.png &> /dev/null&&echo -ne "\r${BGreen}√${NC}\t\tAchtergrondkleurtekst in png gezet                  \n"
-							convert -size 3840x2160 xc:transparent -font Impact -fill white -pointsize $titelvergrotingsfactor -gravity center -draw "text 0,-140 '$liedtitelzonderprodh'" -pointsize $artiestvergrotingsfactor -gravity center -draw "text 0,185 '$verbeterdartiesth'" -blur "0x$((hvlblurletter/2))" -fill white -colorize $hoedikdeletters -pointsize $titelvergrotingsfactor -draw "text 0,-140 '$liedtitelzonderprodh'" -pointsize $artiestvergrotingsfactor -gravity center -draw "text 0,185 '$verbeterdartiesth'" /Users/$USER/Downloads/.outfile2.png &> /dev/null&&echo -ne "\r${BGreen}√${NC}\t\tWitte tekst in png gezet                  \n"
+							convert -size 3840x2160 xc:transparent -font Impact -fill white -pointsize $titelvergrotingsfactor -gravity center -draw "text 0,-140 '$liedtitelzonderprodh'" -pointsize $artiestvergrotingsfactor -gravity center -draw "text 0,185 '$verbeterdartiesth'" -blur "0x$((hvlblurletter/2))" -fill white -colorize $hoedikdeletters -pointsize $titelvergrotingsfactor -draw "text 0,-140 '$liedtitelzonderprodh'" -pointsize $artiestvergrotingsfactor -gravity center -draw "text 0,185 '$verbeterdartiesth'" /Users/$USER/Documents/youtube-dl/.outfile2.png &> /dev/null&&echo -ne "\r${BGreen}√${NC}\t\tWitte tekst in png gezet                  \n"
 							convert /Users/$USER/Documents/youtube-dl/.outfile.png /Users/$USER/Documents/youtube-dl/.outfile2.png -gravity center -compose over -composite /Users/$USER/Documents/youtube-dl/.outfiletotaal.png &> /dev/null&&echo -ne "\r${BGreen}√${NC}\t\tDe twee png's gemerged                  \n"
 							convert -fill black -colorize $((verdonkeringspercentage+$hoedikdeletters))% -blur "0x$hvlblur" -fill white -colorize $hoedikdeletters ~/Documents/youtube-dl/.outfile.jpg /Users/$USER/Documents/youtube-dl/.outfile.jpg &> /dev/null&&echo -ne "\r${BGreen}√${NC}\t\tAchtergondafbeelding geprocessed                  \n"
 							convert /Users/$USER/Documents/youtube-dl/.outfile.jpg /Users/$USER/Documents/youtube-dl/.outfiletotaal.png -gravity center -compose over -composite /Users/$USER/Documents/youtube-dl/.outfiletotaal.jpg &> /dev/null&&echo -ne "\r${BGreen}√${NC}\t\tAchtergondafbeelding met de tekst gemerged                  \n"
@@ -2178,7 +2184,7 @@ if [[ "$toegang" == "1" ]]; then #hier controleer je of hij uberhoubt goed een f
 					#echo -ne "\r"
 					rm ~/Documents/youtube-dl/.outfile.jpg ~/Documents/youtube-dl/.outfile2.jpg &> /dev/null
 					eyeD3 --remove-all-images "$filenaamverbeterd" &> /dev/null&&echo -ne "\r${BGreen}√${NC}\t\tDe oude imbeded afbeelding verwijderd                  \n"
-					eyeD3 --add-image="/Users/$USER/Documents/youtube-dl/file.jpg":FRONT_COVER "$filenaamverbeterd" &> /dev/null #&&echo -ne "\r${BGreen}√${NC}    \t\tDe nieuwe gemergede afbeelding geëmbed                   \n"
+					eyeD3 --add-image="/Users/$USER/Documents/youtube-dl/file.jpg":FRONT_COVER "$filenaamverbeterd"&> /dev/null&&echo -ne "\r${BGreen}√${NC}    \t\tDe nieuwe gemergede afbeelding geëmbed                   \n"
 					sleep .04
 					echo -ne "\r"
 					rm ~/Documents/youtube-dl/.outfile.jpg ~/Documents/youtube-dl/.outfile2.jpg &> /dev/null
@@ -2191,11 +2197,11 @@ if [[ "$toegang" == "1" ]]; then #hier controleer je of hij uberhoubt goed een f
 			else
 				#########################
 				if [[ $instaurl == "vid" ]]; then
-					wget -O ~/Documents/youtube-dl/.outfile.jpg `$brewbin/youtube-dl --get-thumbnail $yourl 2>/dev/null` &> /dev/null
+					wget -O ~/Documents/youtube-dl/.outfile.jpg `yt-dlp --get-thumbnail $yourl 2>/dev/null` &> /dev/null
 				else
 					typeurl=`echo $instaurl|sed -e "s|https://||"`
 					if [[ $typeurl == "youtu.be"* ]]||[[ $typeurl == "www.youtube.com"* ]]; then
-						wget -O ~/Documents/youtube-dl/.outfile.jpg `$brewbin/youtube-dl --get-thumbnail $instaurl` &> /dev/null
+						wget -O ~/Documents/youtube-dl/.outfile.jpg `yt-dlp --get-thumbnail $instaurl` &> /dev/null
 					else
 						if [[ $typeurl == "www.instagram.com"* ]]; then
 							instalooter -T outfile post $instaurl ~/Documents/youtube-dl&>/dev/null
@@ -2211,7 +2217,7 @@ if [[ "$toegang" == "1" ]]; then #hier controleer je of hij uberhoubt goed een f
 								else
 									if [[ $yourl != "" ]]; then
 										echo "File type niet ondersteund, eigen video wordt gebruikt"
-										wget -O ~/Documents/youtube-dl/.outfile.jpg `$brewbin/youtube-dl --get-thumbnail $yourl` &> /dev/null
+										wget -O ~/Documents/youtube-dl/.outfile.jpg `yt-dlp --get-thumbnail $yourl` &> /dev/null
 									else
 										exit 1
 									fi
@@ -2233,7 +2239,7 @@ if [[ "$toegang" == "1" ]]; then #hier controleer je of hij uberhoubt goed een f
 								if [[ $fotokeuze == 2 ]]; then
 									if [[ $yourl != "" ]]; then
 										echo "er ging iets mis met het downloaden van de foto, eigen thumbnail wordt gebruikt"
-										wget -O ~/Documents/youtube-dl/.outfile.jpg `$brewbin/youtube-dl --get-thumbnail $yourl` &> /dev/null
+										wget -O ~/Documents/youtube-dl/.outfile.jpg `yt-dlp --get-thumbnail $yourl` &> /dev/null
 									else
 										exit 1
 									fi
@@ -2416,7 +2422,7 @@ if [[ "$toegang" == "1" ]]; then #hier controleer je of hij uberhoubt goed een f
 			echtgedaan=0
 			while [ $echtgedaan -lt 1 ]; do for s in / / - - \\ \\ \|; do echo -ne "\r${BWhite}$s ${NC}		Audio eind aan het bijsnijden   "; sleep .05;if [[ -f ~/Documents/youtube-dl/.gedaan ]]; then echtgedaan=1; fi; done;done&
 				mv "$filenaamverbeterd" ~/Documents/youtube-dl/.outfile.mp3 &> /dev/null
-				avconv -i ~/Documents/youtube-dl/.outfile.mp3 -t "$eindesec" -c copy "$filenaamverbeterd" &> /dev/null
+				ffmpeg -i ~/Documents/youtube-dl/.outfile.mp3 -t "$eindesec" -c copy "$filenaamverbeterd" &> /dev/null
 				if [[ $fadeoutsec != 0 ]]; then
 					ffmpeg -y -i "$filenaamverbeterd" ~/Documents/youtube-dl/file.jpg &> /dev/null
 					sox "$filenaamverbeterd" ~/Documents/youtube-dl/outputfade.mp3 fade h 0 -0 "$fadeoutsec" &> /dev/null 
@@ -2487,8 +2493,8 @@ if [[ "$toegang" == "1" ]]; then #hier controleer je of hij uberhoubt goed een f
 			while [ $echtgedaan -lt 1 ]; do for s in / / - - \\ \\ \|; do echo -ne "\r${BWhite}$s ${NC}		Audio aan het splitten     "; sleep .05;if [[ -f ~/Documents/youtube-dl/.gedaan ]]; then echtgedaan=1; fi; done;done&
 				/bin/ls "$filenaamverbeterdpt1" &> /dev/null && rm "$filenaamverbeterdpt1" &> /dev/null
 				/bin/ls "$filenaamverbeterdpt2" &> /dev/null && rm "$filenaamverbeterdpt2" &> /dev/null
-				avconv -i "$filenaamverbeterd" -t $sec -metadata title="$titelpt1" -c copy "$filenaamverbeterdpt1" &> /dev/null
-				avconv -i "$filenaamverbeterd" -ss $sectwee -metadata title="$titelpt2" -c copy "$filenaamverbeterdpt2" &> /dev/null
+				ffmpeg -i "$filenaamverbeterd" -t $sec -metadata title="$titelpt1" -c copy "$filenaamverbeterdpt1" &> /dev/null
+				ffmpeg -i "$filenaamverbeterd" -ss $sectwee -metadata title="$titelpt2" -c copy "$filenaamverbeterdpt2" &> /dev/null
 				sox "$filenaamverbeterdpt2" ~/Documents/youtube-dl/outputfade2.mp3 fade h 3 -0 0 &> /dev/null
 				rm "$filenaamverbeterdpt2" &> /dev/null
 				ffmpeg -y -i "$filenaamverbeterdpt1" -i ~/Documents/youtube-dl/outputfade2.mp3 -map 1 -map_metadata 0 -metadata title="$titelpt2" -metadata composer="$engeneer2" -c copy -movflags use_metadata_tags "$filenaamverbeterdpt2" &> /dev/null
@@ -2537,7 +2543,7 @@ if [[ "$toegang" == "1" ]]; then #hier controleer je of hij uberhoubt goed een f
 					if [[ $seconde == "c" ]]; then
 						ffmpeg -y -i "$filenaamverbeterd" -af silenceremove=start_periods=1:start_silence=0.1:start_threshold=-50dB,areverse,silenceremove=start_periods=1:start_silence=0.1:start_threshold=-50dB,areverse ~/Documents/youtube-dl/.outfile.mp3 &> /dev/null
 					else
-						avconv -i "$filenaamverbeterd" -ss $seconde ~/Documents/youtube-dl/.outfile.mp3 &> /dev/null
+						ffmpeg -i "$filenaamverbeterd" -ss $seconde ~/Documents/youtube-dl/.outfile.mp3 &> /dev/null
 					fi
 					eyeD3 --add-image="/Users/$USER/Documents/youtube-dl/file.jpg":FRONT_COVER "/Users/$USER/Documents/youtube-dl/.outfile.mp3" &> /dev/null
 					rm "$filenaamverbeterd" &> /dev/null
@@ -2563,12 +2569,12 @@ if [[ "$toegang" == "1" ]]; then #hier controleer je of hij uberhoubt goed een f
 					if [[ $seconde == "c" ]]; then
 						ffmpeg -y -i "$filenaamverbeterdpt1" -af silenceremove=1:0:-50dB ~/Documents/youtube-dl/.outfile.mp3 &> /dev/null
 					else
-						avconv -i "$filenaamverbeterdpt1" -ss $seconde ~/Documents/youtube-dl/.outfile.mp3 &> /dev/null
+						ffmpeg -i "$filenaamverbeterdpt1" -ss $seconde ~/Documents/youtube-dl/.outfile.mp3 &> /dev/null
 					fi
 					eyeD3 --add-image="/Users/$USER/Documents/youtube-dl/file.jpg":FRONT_COVER "/Users/$USER/Documents/youtube-dl/.outfile.mp3" &> /dev/null
 					rm "$filenaamverbeterdpt1" &> /dev/null
 					rm ~/Documents/youtube-dl/file.jpg &> /dev/null
-					avconv -i ~/Documents/youtube-dl/.outfile.mp3 -c copy "$filenaamverbeterdpt1" &> /dev/null						
+					ffmpeg -i ~/Documents/youtube-dl/.outfile.mp3 -c copy "$filenaamverbeterdpt1" &> /dev/null						
 					if [[ $fadeinsec != 0 ]]; then
 						if [[ $fadeinsec == "c" ]]; then
 							ffmpeg -y -i "$filenaamverbeterdpt1" -af silenceremove=1:0:-50dB ~/Documents/youtube-dl/.outfile.mp3 &> /dev/null
@@ -2607,18 +2613,28 @@ if [[ "$toegang" == "1" ]]; then #hier controleer je of hij uberhoubt goed een f
 			eyeD3 --add-image="/Users/$USER/Documents/youtube-dl/file.jpg":FRONT_COVER "$filenaamverbeterdpt2" &> /dev/null
 		fi
 		rm 	"/Users/$USER/Documents/youtube-dl/file.jpg" &>/dev/null
-		$brewbin/yt-dlp $yourl --write-sub --convert-subs srt --skip-download -o /$HOME/youtube-dl/$random &>/dev/null
-		ls "/$HOME/youtube-dl/$random"* &>/dev/null&&subsgeslaagd=1
+		yt-dlp $yourl --sub-langs all,-live_chat --write-sub --convert-subs srt --skip-download -o $HOME/Documents/youtube-dl/$random &>/dev/null
+		ls "$HOME/Documents/youtube-dl/$random"* &>/dev/null&&subsgeslaagd=1
 		if [[ $subsgeslaagd == 1 ]]; then
-			lang=$(ls "/$HOME/youtube-dl/$random"*|rev|awk 'BEGIN {FS="."}{print $2}'|rev)
-			mv "/$HOME/youtube-dl/$random"* ~/Documents/youtube-dl/lyrics.txt
+			lang=$(ls "$HOME/Documents/youtube-dl/$random"*|rev|awk 'BEGIN {FS="."}{print $2}'|rev)
+			mv "$HOME/Documents/youtube-dl/$random"* ~/Documents/youtube-dl/lyrics.txt
 			gsed -i '/^[[:space:]]*$/d' ~/Documents/youtube-dl/lyrics.txt
 			n=0
 			while [[ $(cat ~/Documents/youtube-dl/lyrics.txt|nl |grep " 00:"|head -1|awk 'BEGIN {FS=" "}{print $1}') != $n ]];do
 				n=$((n+1))
 				gsed -i '1d' ~/Documents/youtube-dl/lyrics.txt
 			done
-			if [[ $tweedelied != "" ]]; then
+			if [[ $tweedelied == "" ]]; then
+				gsed -i "s/^[0-9]\+$//g" ~/Documents/youtube-dl/lyrics.txt
+				gsed -i "s/.* --> .*//g" ~/Documents/youtube-dl/lyrics.txt
+				gsed -i '/^[[:space:]]*$/d' ~/Documents/youtube-dl/lyrics.txt
+				gsed -i "s/^.*$/&\n/" ~/Documents/youtube-dl/lyrics.txt
+				while `cat ~/Documents/youtube-dl/lyrics.txt|grep "^ " &>/dev/null`;do
+					gsed -i "s/^ //g" ~/Documents/youtube-dl/lyrics.txt
+				done
+				eyeD3 --encoding "utf8" --add-lyrics "/Users/$USER/Documents/youtube-dl/lyrics.txt" "$filenaamverbeterd" 1>/dev/null
+				rm ~/Documents/youtube-dl/lyrics.txt
+			else
 				n=$sectwee
 				while [[ $dichtstebij == "" ]];do
 					n=$((n+1))
@@ -2641,16 +2657,6 @@ if [[ "$toegang" == "1" ]]; then #hier controleer je of hij uberhoubt goed een f
 				eyeD3 --encoding "utf8" --add-lyrics "/Users/$USER/Documents/youtube-dl/lyrics1.txt" "$filenaamverbeterdpt1" 1>/dev/null
 				eyeD3 --encoding "utf8" --add-lyrics "/Users/$USER/Documents/youtube-dl/lyrics2.txt" "$filenaamverbeterdpt2" 1>/dev/null
 				rm ~/Documents/youtube-dl/lyrics1.txt ~/Documents/youtube-dl/lyrics2.txt
-			else
-				gsed -i "s/^[0-9]\+$//g" ~/Documents/youtube-dl/lyrics.txt
-				gsed -i "s/.* --> .*//g" ~/Documents/youtube-dl/lyrics.txt
-				gsed -i '/^[[:space:]]*$/d' ~/Documents/youtube-dl/lyrics.txt
-				gsed -i "s/^.*$/&\n/" ~/Documents/youtube-dl/lyrics.txt
-				while `cat ~/Documents/youtube-dl/lyrics.txt|grep "^ " &>/dev/null`;do
-					gsed -i "s/^ //g" ~/Documents/youtube-dl/lyrics.txt
-				done
-				eyeD3 --encoding "utf8" --add-lyrics "/Users/$USER/Documents/youtube-dl/lyrics.txt" "$filenaamverbeterd" 1>/dev/null
-				rm ~/Documents/youtube-dl/lyrics.txt
 			fi
 			# if [[ `cat ~/Documents/youtube-dl/lyrics.txt|wc -c|tr -d [:space:]` -lt 5000 ]];then
 			# 	if [[ $lang != "nl" ]]; then
